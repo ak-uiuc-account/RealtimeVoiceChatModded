@@ -204,4 +204,4 @@ EXPOSE 443
 # Set the entrypoint script - This runs as root
 ENTRYPOINT ["/entrypoint.sh"]
 # Define the default command - This is passed as "$@" to the entrypoint script
-CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "443"]
+CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--ssl-keyfile", "/app/certs/key.pem", "--ssl-certfile", "/app/certs/cert.pem", "--port", "443" ]
