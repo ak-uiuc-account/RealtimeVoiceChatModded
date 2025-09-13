@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse, Response, FileResponse
 
-USE_SSL = False
+USE_SSL = True
 TTS_START_ENGINE = "orpheus"
 TTS_START_ENGINE = "kokoro"
 TTS_START_ENGINE = "coqui"
@@ -949,8 +949,8 @@ if __name__ == "__main__":
     else:
         logger.info("🖥️🔒 Attempting to start server with SSL.")
         # Check if cert files exist
-        cert_file = "127.0.0.1+1.pem"
-        key_file = "127.0.0.1+1-key.pem"
+        cert_file = "/app/certs/cert.pem"
+        key_file = "/app/certs/key.pem"
         if not os.path.exists(cert_file) or not os.path.exists(key_file):
              logger.error(f"🖥️💥 SSL cert file ({cert_file}) or key file ({key_file}) not found.")
              logger.error("🖥️💥 Please generate them using mkcert:")
@@ -965,7 +965,7 @@ if __name__ == "__main__":
         uvicorn.run(
             "server:app",
             host="0.0.0.0",
-            port=8000,
+            port=443,
             log_config=None,
             ssl_certfile=cert_file,
             ssl_keyfile=key_file,

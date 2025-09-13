@@ -70,7 +70,7 @@ FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 # Avoid prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies for the APP + gosu
+# Install runtime dependencies for the APP + gosu + mkcert
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3-pip \
@@ -85,8 +85,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     curl \
     gosu \
+    wget \
+    ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install mkcert for SSL certificate generation
+RUN wget -O /usr/local/bin/mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64 \
+    && chmod +x /usr/local/bin/mkcert
 
 # Make python3.10 the default python
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
@@ -145,6 +151,15 @@ RUN echo "Preloading SentenceFinishedClassification model..." && \
                 print('Model downloads successful.')" \
     || (echo "Sentence Classifier download failed" && exit 1)
 
+# <<<--- SSL Certificate Generation --->>>
+RUN echo "Generating SSL certificates..." && \
+    mkdir -p /app/certs && \
+    # First, get and save the public IP
+    PUBLIC_IP=$(curl -s https://ifconfig.me 2>/dev/null || curl -s https://api.ipify.org 2>/dev/null || echo "localhost") && \
+    # Then use it in mkcert
+    mkcert -key-file /app/certs/key.pem -cert-file /app/certs/cert.pem localhost 127.0.0.1 ::1 $PUBLIC_IP && \
+    echo "SSL certificates generated successfully"
+
 
 # Create a non-root user and group - DO NOT switch to it here
 RUN groupadd --gid 1001 appgroup && \
@@ -156,7 +171,9 @@ RUN mkdir -p /home/appuser/.cache && \
     chown -R appuser:appgroup /app && \
     chown -R appuser:appgroup /home/appuser && \
     # Also chown the caches potentially populated by root during build
-    if [ -d /root/.cache ]; then chown -R appuser:appgroup /root/.cache; fi
+    if [ -d /root/.cache ]; then chown -R appuser:appgroup /root/.cache; fi && \
+    # Ensure SSL certificates are accessible by appuser
+    chown -R appuser:appgroup /app/certs
 
 # Copy and set permissions for entrypoint script
 COPY --chown=1001:1001 entrypoint.sh /entrypoint.sh
@@ -184,9 +201,9 @@ ENV HF_HOME=${HOME}/.cache/huggingface
 ENV TORCH_HOME=${HOME}/.cache/torch
 
 # Expose the port the FastAPI application runs on
-EXPOSE 8000
+EXPOSE 443
 
 # Set the entrypoint script - This runs as root
 ENTRYPOINT ["/entrypoint.sh"]
 # Define the default command - This is passed as "$@" to the entrypoint script
-CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "443"]
