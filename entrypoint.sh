@@ -11,6 +11,10 @@ mkdir -p /home/appuser/.cache/huggingface /home/appuser/.cache/torch
 # Uses UID:GID which is robust. Targets the parent .cache dir recursively.
 chown -R 1001:1001 /home/appuser/.cache
 
+echo "Entrypoint: Generating SSL certificates..."
+# Generate SSL certificates as appuser before starting the server
+gosu appuser python startup.py
+
 echo "Entrypoint: Switching to user appuser (1001) and executing command: $@" # Informative log.
 
 # Drop privileges using gosu before executing the CMD passed as arguments ($@).

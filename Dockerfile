@@ -108,6 +108,9 @@ COPY --chown=1001:1001 --from=builder /usr/local/lib/python3.10/dist-packages /u
 # Copy the application code from the builder stage
 COPY --chown=1001:1001 --from=builder /app/code /app/code
 
+# Copy startup script for SSL certificate generation
+COPY --chown=1001:1001 code/startup.py /app/code/startup.py
+
 # <<<--- Keep other model pre-downloads --->>>
 # <<<--- Silero VAD Pre-download --->>>
 RUN echo "Preloading Silero VAD model..." && \
@@ -152,13 +155,8 @@ RUN echo "Preloading SentenceFinishedClassification model..." && \
     || (echo "Sentence Classifier download failed" && exit 1)
 
 # <<<--- SSL Certificate Generation --->>>
-RUN echo "Generating SSL certificates..." && \
-    mkdir -p /app/certs && \
-    # First, get and save the public IP
-    PUBLIC_IP=$(curl -s https://ifconfig.me 2>/dev/null || curl -s https://api.ipify.org 2>/dev/null || echo "localhost") && \
-    # Then use it in mkcert
-    mkcert -key-file /app/certs/key.pem -cert-file /app/certs/cert.pem localhost 127.0.0.1 ::1 $PUBLIC_IP && \
-    echo "SSL certificates generated successfully"
+# SSL certificates will be generated at runtime via startup.py
+RUN mkdir -p /app/certs
 
 
 # Create a non-root user and group - DO NOT switch to it here
