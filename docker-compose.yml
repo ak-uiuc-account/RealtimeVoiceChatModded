@@ -17,6 +17,8 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - HF_HOME=/home/appuser/.cache/huggingface
       - TORCH_HOME=/home/appuser/.cache/torch
+      # --- OpenAI API Key ---
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
        # Optional: Mount code for live development
        # - ./code:/app/code
