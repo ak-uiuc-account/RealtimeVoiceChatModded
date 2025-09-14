@@ -40,7 +40,7 @@ LLM_START_MODEL = "hf.co/bartowski/huihui-ai_Mistral-Small-24B-Instruct-2501-abl
 # LLM_START_PROVIDER = "lmstudio"
 # LLM_START_MODEL = "Qwen3-30B-A3B-GGUF/Qwen3-30B-A3B-Q3_K_L.gguf"
 NO_THINK = False
-DIRECT_STREAM = TTS_START_ENGINE=="kokoro"
+DIRECT_STREAM = TTS_START_ENGINE=="orpheus"
 
 if __name__ == "__main__":
     logger.info(f"🖥️⚙️ {Colors.apply('[PARAM]').blue} Starting engine: {Colors.apply(TTS_START_ENGINE).blue}")

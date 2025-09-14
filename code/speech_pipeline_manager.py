@@ -507,7 +507,7 @@ class SpeechPipelineManager:
                         logger.warning(f"🗣️🛑💥 {current_gen_id_str} Error calculating similarity: {e}. Assuming different.")
                         similarity = 0.0 # Assume different on error
 
-                    if similarity >= 0.95:
+                    if similarity >= 0.85:  # Lowered threshold to prevent unnecessary aborts
                         logger.info(f"🗣️🛑🙅 {current_gen_id_str} Text ('{txt[:30]}...') too similar ({similarity:.2f}) to current '{self.running_generation.text[:30] if self.running_generation.text else 'None'}...'. Ignoring.")
                         return False # No abort needed
 
@@ -515,7 +515,7 @@ class SpeechPipelineManager:
                     logger.info(f"🗣️🛑🚀 {current_gen_id_str} Text ('{txt[:30]}...') different enough ({similarity:.2f}) from '{self.running_generation.text[:30] if self.running_generation.text else 'None'}...'. Requesting synchronous abort.")
                     start_time = time.time()
                     # Call the synchronous public abort method - THIS IS KEY
-                    self.abort_generation(wait_for_completion=wait_for_finish, timeout=7.0, reason=f"check_abort found different text ({abort_reason})")
+                    self.abort_generation(wait_for_completion=wait_for_finish, timeout=3.0, reason=f"check_abort found different text ({abort_reason})")
 
                     if wait_for_finish:
                          # Check state *after* waiting for the abort call
@@ -787,8 +787,16 @@ class SpeechPipelineManager:
         Args:
             txt: The user input text for the new generation.
         """
-        # --- Abort existing generation if necessary ---
+        # Check if we're already processing the same text to prevent duplicates
         id_in_spec = self.generation_counter + 1 # Prospective ID for logging
+        if (self.running_generation and 
+            self.running_generation.text and 
+            not self.running_generation.abortion_started and
+            self.text_similarity.calculate_similarity(self.running_generation.text, txt) >= 0.90):
+            logger.info(f"🗣️🛑🙅 Gen {id_in_spec} Text too similar to current generation, ignoring duplicate request.")
+            return
+            
+        # --- Abort existing generation if necessary ---
         aborted = self.check_abort(txt, wait_for_finish=True, abort_reason=f"process_prepare_generation for new id {id_in_spec}")
 
         # --- State is now guaranteed to be clean (running_generation is None) ---
@@ -909,7 +917,7 @@ class SpeechPipelineManager:
                 logger.info(f"🗣️🛑👄❌ {current_gen_id_str} Stopping Quick TTS...")
                 self.stop_tts_quick_request_event.set()
                 self.llm_answer_ready_event.set() # Wake up TTS worker if it's waiting
-                stopped = self.stop_tts_quick_finished_event.wait(timeout=5.0) # Wait for TTS worker
+                stopped = self.stop_tts_quick_finished_event.wait(timeout=2.0) # Wait for TTS worker
                 if stopped:
                     logger.info(f"🗣️🛑👄👍 {current_gen_id_str} Quick TTS stopped confirmation received.")
                     self.stop_tts_quick_finished_event.clear() # Reset
